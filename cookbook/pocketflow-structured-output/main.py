@@ -1,14 +1,15 @@
 import yaml
 import os  # Needed for the utils import below
 from pocketflow import Node, Flow
-from utils import call_llm # Assumes utils.py with call_llm exists
+from llm_utils import call_llm  # Assumes utils.py with call_llm exists
+
 
 class ResumeParserNode(Node):
     def prep(self, shared):
         """Return resume text and target skills from shared state."""
         return {
             "resume_text": shared["resume_text"],
-            "target_skills": shared.get("target_skills", [])
+            "target_skills": shared.get("target_skills", []),
         }
 
     def exec(self, prep_res):
@@ -19,7 +20,9 @@ class ResumeParserNode(Node):
         target_skills = prep_res["target_skills"]
 
         # Format skills with indexes for the prompt
-        skill_list_for_prompt = "\n".join([f"{i}: {skill}" for i, skill in enumerate(target_skills)])
+        skill_list_for_prompt = "\n".join(
+            [f"{i}: {skill}" for i, skill in enumerate(target_skills)]
+        )
 
         # Simplified Prompt focusing on key instructions and format
         prompt = f"""
@@ -66,6 +69,9 @@ skill_indexes:
 
 Generate the YAML output now:
 """
+        print("=== Prompt for LLM ===\n")
+        print(prompt)
+        print("=== End of Prompt ===\n")
         response = call_llm(prompt)
 
         # --- Minimal YAML Extraction ---
@@ -78,14 +84,24 @@ Generate the YAML output now:
         assert structured_result is not None, "Validation Failed: Parsed YAML is None"
         assert "name" in structured_result, "Validation Failed: Missing 'name'"
         assert "email" in structured_result, "Validation Failed: Missing 'email'"
-        assert "experience" in structured_result, "Validation Failed: Missing 'experience'"
-        assert isinstance(structured_result.get("experience"), list), "Validation Failed: 'experience' is not a list"
-        assert "skill_indexes" in structured_result, "Validation Failed: Missing 'skill_indexes'"
+        assert (
+            "experience" in structured_result
+        ), "Validation Failed: Missing 'experience'"
+        assert isinstance(
+            structured_result.get("experience"), list
+        ), "Validation Failed: 'experience' is not a list"
+        assert (
+            "skill_indexes" in structured_result
+        ), "Validation Failed: Missing 'skill_indexes'"
         skill_indexes_val = structured_result.get("skill_indexes")
-        assert skill_indexes_val is None or isinstance(skill_indexes_val, list), "Validation Failed: 'skill_indexes' is not a list or None"
+        assert skill_indexes_val is None or isinstance(
+            skill_indexes_val, list
+        ), "Validation Failed: 'skill_indexes' is not a list or None"
         if isinstance(skill_indexes_val, list):
-             for index in skill_indexes_val:
-                 assert isinstance(index, int), f"Validation Failed: Skill index '{index}' is not an integer"
+            for index in skill_indexes_val:
+                assert isinstance(
+                    index, int
+                ), f"Validation Failed: Skill index '{index}' is not an integer"
         # --- End Basic Validation ---
 
         return structured_result
@@ -96,7 +112,11 @@ Generate the YAML output now:
 
         print("\n=== STRUCTURED RESUME DATA (Comments & Skill Index List) ===\n")
         # Dump YAML ensuring block style for readability
-        print(yaml.dump(exec_res, sort_keys=False, allow_unicode=True, default_flow_style=None))
+        print(
+            yaml.dump(
+                exec_res, sort_keys=False, allow_unicode=True, default_flow_style=None
+            )
+        )
         print("\n============================================================\n")
         print("✅ Extracted resume information.")
 
@@ -107,42 +127,42 @@ if __name__ == "__main__":
 
     # --- Configuration ---
     target_skills_to_find = [
-        "Team leadership & management", # 0
-        "CRM software",                 # 1
-        "Project management",           # 2
-        "Public speaking",              # 3
-        "Microsoft Office",             # 4
-        "Python",                       # 5
-        "Data Analysis"                 # 6
+        "Team leadership & management",  # 0
+        "CRM software",  # 1
+        "Project management",  # 2
+        "Public speaking",  # 3
+        "Microsoft Office",  # 4
+        "Python",  # 5
+        "Data Analysis",  # 6
     ]
-    resume_file = 'data.txt' # Assumes data.txt contains the resume
+    resume_file = "data.txt"  # Assumes data.txt contains the resume
 
     # --- Prepare Shared State ---
     shared = {}
     try:
-        with open(resume_file, 'r') as file:
+        with open(resume_file, "r") as file:
             shared["resume_text"] = file.read()
     except FileNotFoundError:
         print(f"Error: Resume file '{resume_file}' not found.")
-        exit(1) # Exit if resume file is missing
+        exit(1)  # Exit if resume file is missing
 
     shared["target_skills"] = target_skills_to_find
 
     # --- Define and Run Flow ---
     parser_node = ResumeParserNode(max_retries=3, wait=10)
     flow = Flow(start=parser_node)
-    flow.run(shared) # Execute the parsing node
+    flow.run(shared)  # Execute the parsing node
 
     # --- Display Found Skills ---
     if "structured_data" in shared and "skill_indexes" in shared["structured_data"]:
-         print("\n--- Found Target Skills (from Indexes) ---")
-         found_indexes = shared["structured_data"]["skill_indexes"]
-         if found_indexes: # Check if the list is not empty or None
-             for index in found_indexes:
-                 if 0 <= index < len(target_skills_to_find):
-                     print(f"- {target_skills_to_find[index]} (Index: {index})")
-                 else:
-                     print(f"- Warning: Found invalid skill index {index}")
-         else:
-             print("No target skills identified from the list.")
-         print("----------------------------------------\n")
+        print("\n--- Found Target Skills (from Indexes) ---")
+        found_indexes = shared["structured_data"]["skill_indexes"]
+        if found_indexes:  # Check if the list is not empty or None
+            for index in found_indexes:
+                if 0 <= index < len(target_skills_to_find):
+                    print(f"- {target_skills_to_find[index]} (Index: {index})")
+                else:
+                    print(f"- Warning: Found invalid skill index {index}")
+        else:
+            print("No target skills identified from the list.")
+        print("----------------------------------------\n")
