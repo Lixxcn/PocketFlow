@@ -1,20 +1,29 @@
-from anthropic import Anthropic
+from openai import OpenAI
 import os
 
-def call_llm(prompt):
-    client = Anthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", "your-api-key"))
-    response = client.messages.create(
-        model="claude-3-7-sonnet-20250219",
-        max_tokens=10000,
-        messages=[
-            {"role": "user", "content": prompt}
-        ]
+from dotenv import load_dotenv
+
+load_dotenv()
+
+
+def call_llm(messages):
+    client = OpenAI(api_key=os.environ.get("OPENAI_API_KEY", "your-api-key"))
+
+    response = client.chat.completions.create(
+        model="deepseek-reasoner",
+        messages=[{"role": "user", "content": messages}],
+        temperature=0.7,
     )
-    return response.content[0].text
+
+    return response.choices[0].message.content
+
 
 if __name__ == "__main__":
-    print("## Testing call_llm")
-    prompt = "In a few words, what is the meaning of life?"
-    print(f"## Prompt: {prompt}")
-    response = call_llm(prompt)
-    print(f"## Response: {response}")
+    # Test the LLM call
+    # messages = [
+    #     {"role": "user", "content": "In a few words, what's the meaning of life?"}
+    # ]
+    messages = "In a few words, what's the meaning of life? in Chinese."
+    response = call_llm(messages)
+    print(f"Prompt: {messages}")
+    print(f"Response: {response}")
