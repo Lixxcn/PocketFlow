@@ -70,7 +70,6 @@ if __name__ == "__main__":
         "languages": [
             "Chinese",
             "Spanish",
-            "Japanese",
         ],
         "output_dir": "translations",
     }

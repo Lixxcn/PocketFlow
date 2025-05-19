@@ -1,25 +1,21 @@
 import os
+from openai import AsyncOpenAI
+from dotenv import load_dotenv
 import asyncio
-from anthropic import AsyncAnthropic
 
-# Async version of the simple wrapper, using Anthropic
+load_dotenv()
+
+
 async def call_llm(prompt):
-    """Async wrapper for Anthropic API call."""
-    client = AsyncAnthropic(api_key=os.environ.get("ANTHROPIC_API_KEY", "your-api-key"))
-    response = await client.messages.create(
-        model="claude-3-7-sonnet-20250219",
-        max_tokens=20000,
-        thinking={
-            "type": "enabled",
-            "budget_tokens": 16000
-        },
-        messages=[
-            {"role": "user", "content": prompt}
-        ],
+    client = AsyncOpenAI(api_key=os.environ.get("OPENAI_API_KEY", "your-api-key"))
+    r = await client.chat.completions.create(
+        model="deepseek-chat", messages=[{"role": "user", "content": prompt}]
     )
-    return response.content[1].text
+    return r.choices[0].message.content
+
 
 if __name__ == "__main__":
+
     async def run_test():
         print("## Testing async call_llm with Anthropic")
         prompt = "In a few words, what is the meaning of life?"
@@ -27,4 +23,4 @@ if __name__ == "__main__":
         response = await call_llm(prompt)
         print(f"## Response: {response}")
 
-    asyncio.run(run_test()) 
+    asyncio.run(run_test())

@@ -3,10 +3,10 @@ from pocketflow import AsyncNode, AsyncFlow
 from utils import call_llm
 
 # 定义人物1的系统提示词 (可手动编辑)
-AGENT1_SYSTEM_PROMPT = "你是一个友善的AI助手，喜欢帮助别人。"
+AGENT1_SYSTEM_PROMPT = "你是Lixx，是家里的顶梁柱，在外面挣钱养家，每天很辛苦，但是你的老婆（叫梦梦）对你身体很冷淡，你很爱很爱你的老婆，你正在和她进行聊天。"
 
 # 定义人物2的系统提示词 (可手动编辑)
-AGENT2_SYSTEM_PROMPT = "你是一个好奇的AI研究员，喜欢提问和探索新知识。"
+AGENT2_SYSTEM_PROMPT = "你是梦梦，是家里的小废物，是Lixx的老婆，你老公很爱你，你知道他对你很专一，是世界上最好的人，但是你不想理他，你们正在进行聊天。"
 
 
 class ChatAgent1(AsyncNode):
@@ -29,7 +29,7 @@ class ChatAgent1(AsyncNode):
         prompt += "ChatAgent1: "  # 提示 LLM 以 Agent1 的身份回复
 
         response = call_llm(prompt)
-        print(f"\n\nAgent1: {response}")
+        print(f"\n\nLixx: {response}")
         return response
 
     async def post_async(self, shared, prep_res, exec_res):
@@ -41,8 +41,9 @@ class ChatAgent1(AsyncNode):
 
         # 检查是否达到最大轮数
         shared["round_count"] += 1
-        if shared["round_count"] >= 10:  # 改回10轮
+        if shared["round_count"] >= 3:
             print("达到最大聊天轮数，聊天结束。")
+
             await shared["agent2_queue"].put("CHAT_END")  # 通知 Agent2 结束
             await shared["agent1_queue"].put("CHAT_END")  # 通知 Agent1 结束自身流程
             return "end"
@@ -72,16 +73,10 @@ class ChatAgent2(AsyncNode):
         prompt += "ChatAgent2: "  # 提示 LLM 以 Agent2 的身份回复
 
         response = call_llm(prompt)
-        print(f"\n\nAgent2: {response}")
+        print(f"\n\n梦梦: {response}")
         return response
 
     async def post_async(self, shared, prep_res, exec_res):
-        # 检查 prep_async 是否返回 None (表示接收到结束信号)
-        if prep_res is None:
-            # 如果接收到结束信号，也向 Agent1 发送结束信号
-            await shared["agent1_queue"].put("CHAT_END")
-            return "end"
-
         if exec_res is None:
             return "end"
 
@@ -108,9 +103,11 @@ async def main():
     }
 
     # 初始化对话，Agent1 先开始
-    initial_message = "你好，我们来聊聊天吧！"
+    initial_message = "宝贝，你天天不运动，也不好好吃饭，身体会越来越差的，哥哥心疼"
     shared["conversation_history"].append(("Agent1", initial_message))
     await shared["agent2_queue"].put(initial_message)  # 将第一条消息放入 Agent2 的队列
+
+    print(f"\n\nLixx: {initial_message}")
 
     # 创建节点和流程
     agent1 = ChatAgent1()
